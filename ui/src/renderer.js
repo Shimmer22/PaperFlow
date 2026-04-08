@@ -40,6 +40,14 @@ let currentClarificationTurn = null;
 let selectedClarificationOptionId = '';
 let clarificationIdea = '';
 
+const hasMarkdownSupport = Boolean(window.marked && window.DOMPurify);
+if (hasMarkdownSupport) {
+  window.marked.setOptions({
+    gfm: true,
+    breaks: true,
+  });
+}
+
 function normalizeIdeaText(text) {
   return String(text || '').replace(/\s+/g, ' ').trim();
 }
@@ -56,6 +64,15 @@ function escapeHtml(text) {
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;');
+}
+
+function renderMarkdownToHtml(markdownText) {
+  const raw = String(markdownText || '');
+  if (!hasMarkdownSupport) {
+    return `<p>${escapeHtml(raw).replaceAll('\n', '<br>')}</p>`;
+  }
+  const rendered = window.marked.parse(raw);
+  return window.DOMPurify.sanitize(rendered);
 }
 
 function conciseWarningMessage(warningText) {
@@ -219,7 +236,7 @@ async function loadRun(runDir) {
     <p><strong>主要结果:</strong> ${((item.main_results || [])[0]) || '暂无明确结果摘要。'}</p>
     <p><strong>阅读深度:</strong> ${item.reading_depth || 'unknown'}</p>
   `);
-  finalDiscussion.textContent = data.finalDiscussion || '';
+  finalDiscussion.innerHTML = renderMarkdownToHtml(data.finalDiscussion || '');
 }
 
 function fillSelect(selectEl, values, placeholder) {
@@ -242,6 +259,11 @@ function syncProviderOptions() {
   fillSelect(mainReasoningSelect, provider?.supportedReasoningEfforts || [], '默认主强度');
   fillSelect(subModelSelect, provider?.supportedModels || [], '默认 Sub 模型');
   fillSelect(subReasoningSelect, provider?.supportedReasoningEfforts || [], '默认 Sub 强度');
+
+  const defaultModel = 'minimaxai/minimax-m2.5';
+  if ((provider?.supportedModels || []).includes(defaultModel)) {
+    mainModelSelect.value = defaultModel;
+  }
 }
 
 function renderClarificationTurn(turn) {
@@ -289,10 +311,15 @@ async function loadUiConfig() {
   for (const provider of providerConfigs) {
     const option = document.createElement('option');
     option.value = provider.filePath;
-    option.textContent = `${provider.displayName} (${provider.command})`;
+    option.textContent = provider.command
+      ? `${provider.displayName} (${provider.command})`
+      : provider.displayName;
     providerSelect.appendChild(option);
   }
-  if (providerConfigs[0]) {
+  const nvidiaProvider = providerConfigs.find((item) => item.name === 'nvidia');
+  if (nvidiaProvider) {
+    providerSelect.value = nvidiaProvider.filePath;
+  } else if (providerConfigs[0]) {
     providerSelect.value = providerConfigs[0].filePath;
   }
   syncProviderOptions();
@@ -323,7 +350,7 @@ async function startRun() {
   const outdir = outdirInput.value.trim() || `${outputRootInput.value}/ui_run_${Date.now()}`;
   const result = await window.researchFlow.startRun({
     idea,
-    providerName: provider?.name || 'glm_api',
+    providerName: provider?.name || 'nvidia',
     providerConfigPath: providerSelect.value,
     mainModel,
     mainReasoningEffort,
@@ -487,3 +514,20 @@ window.researchFlow.onRunStatus(async (payload) => {
 });
 
 loadUiConfig().then(refreshRuns);
+
+document.addEventListener('click', async (event) => {
+  const anchor = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+  if (!anchor) {
+    return;
+  }
+  const href = String(anchor.getAttribute('href') || '').trim();
+  if (!/^https?:\/\//i.test(href)) {
+    return;
+  }
+  event.preventDefault();
+  try {
+    await window.researchFlow.openExternalUrl(href);
+  } catch {
+    // no-op: avoid breaking UI interactions on external-open failures
+  }
+});

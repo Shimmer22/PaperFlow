@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('researchFlow', {
   listRuns: (outputRoot) => ipcRenderer.invoke('list-runs', outputRoot),
   loadRun: (runDir) => ipcRenderer.invoke('load-run', runDir),
   openPath: (targetPath) => ipcRenderer.invoke('open-path', targetPath),
+  openExternalUrl: (targetUrl) => ipcRenderer.invoke('open-external-url', targetUrl),
   getUiConfig: () => ipcRenderer.invoke('get-ui-config'),
   generateClarificationTurn: (options) => ipcRenderer.invoke('generate-clarification-turn', options),
   startRun: (options) => ipcRenderer.invoke('start-run', options),

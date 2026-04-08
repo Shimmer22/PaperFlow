@@ -2,12 +2,14 @@
   "name": "research-flow-ui",
   "version": "0.1.0",
   "private": true,
-  "description": "Electron result browser for Research Flow",
+  "description": "Electron result browser for PaperFlow",
   "main": "src/main.js",
   "scripts": {
     "start": "electron ."
   },
   "dependencies": {
+    "dompurify": "^3.2.6",
+    "marked": "^15.0.12",
     "yaml": "^2.8.1"
   },
   "devDependencies": {

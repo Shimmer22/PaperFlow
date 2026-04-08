@@ -23,6 +23,22 @@ function createWindow() {
     },
   });
   win.loadFile(path.join(__dirname, 'index.html'));
+
+  // Keep external links in the user's default system browser.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) {
+      shell.openExternal(url);
+      return { action: 'deny' };
+    }
+    return { action: 'deny' };
+  });
+  win.webContents.on('will-navigate', (event, url) => {
+    const currentUrl = win.webContents.getURL();
+    if (url !== currentUrl && /^https?:\/\//i.test(url)) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
 }
 
 function safeReadJson(filePath) {
@@ -230,6 +246,10 @@ ipcMain.handle('open-path', async (_, targetPath) => {
   return shell.openPath(targetPath);
 });
 
+ipcMain.handle('open-external-url', async (_, targetUrl) => {
+  return shell.openExternal(targetUrl);
+});
+
 ipcMain.handle('save-run-alias', async (_, runDir, alias) => {
   const aliasPath = path.join(runDir, 'run_alias.txt');
   fs.writeFileSync(aliasPath, String(alias || '').trim(), 'utf-8');
@@ -297,7 +317,7 @@ ipcMain.handle('start-run', async (_, options) => {
   }
   const runOptions = {
     ...options,
-    providerName: options.providerName || 'glm_api',
+    providerName: options.providerName || 'nvidia',
     providerConfigPath: options.providerConfigPath,
     outdir: options.outdir || path.join(defaultOutputRoot, `ui_run_${Date.now()}`),
   };

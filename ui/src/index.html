@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Research Flow 控制台</title>
+    <title>PaperFlow 控制台</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar">
-        <h1>Research Flow</h1>
+        <h1>PaperFlow</h1>
         <p class="sidebar-intro">本地研究工作流控制台</p>
         <label for="outputRoot">输出目录根路径</label>
         <input id="outputRoot" type="text" value="../outputs" />
@@ -36,7 +36,7 @@
           <input id="maxPapers" type="number" min="1" max="5" value="5" />
           <label for="sourcesInput">论文源</label>
           <input id="sourcesInput" type="text" value="openalex,semanticscholar,arxiv" />
-          <h3>澄清对话（GUI）</h3>
+          <h3>细节确认</h3>
           <button id="generateClarificationTurn" type="button">生成下一轮澄清问题</button>
           <div id="clarificationQuestion" class="status-box">尚未生成澄清问题。</div>
           <div id="clarificationOptions" class="runs-list"></div>
@@ -87,10 +87,12 @@
         </section>
         <section class="panel">
           <h2>最终综合讨论</h2>
-          <pre id="finalDiscussion"></pre>
+          <div id="finalDiscussion" class="markdown-body"></div>
         </section>
       </main>
     </div>
+    <script src="../node_modules/marked/lib/marked.umd.js"></script>
+    <script src="../node_modules/dompurify/dist/purify.min.js"></script>
     <script src="./renderer.js"></script>
   </body>
   </html>

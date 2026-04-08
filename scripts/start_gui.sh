@@ -17,4 +17,8 @@ if [[ -z "${API_KEY:-}" && -z "${NV_API_KEY:-}" ]]; then
 fi
 
 cd ui
+if [[ ! -d "node_modules" || ! -x "node_modules/.bin/electron" ]]; then
+  echo "UI dependencies not found, running npm install..."
+  npm install
+fi
 npm start
