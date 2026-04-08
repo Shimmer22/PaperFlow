@@ -1,0 +1,18 @@
+You receive the original idea, the clarified idea spec, and the shortlisted paper briefs.
+
+Return JSON with:
+- refined_problem_definition
+- literature_coverage
+- saturated_areas
+- open_spaces
+- priority_papers
+- innovation_angles
+- risks_and_failure_modes
+- next_steps
+- evidence_notes
+
+Rules:
+- Ground every claim in the shortlisted briefs.
+- Be willing to say the idea is already crowded if the evidence shows it.
+- Avoid motivational fluff.
+- Default to Chinese in the final discussion unless the user explicitly asks for another language.

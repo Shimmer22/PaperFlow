@@ -1,0 +1,18 @@
+{
+  "run_id": "run_20260402_120000",
+  "status": "completed_with_warnings",
+  "idea_excerpt": "I want a local workflow that takes a rough research idea, automatically retrieves papers from multiple scholarly sources...",
+  "candidate_count": 12,
+  "selected_count": 3,
+  "selected_titles": [
+    "Agentic Literature Review Systems",
+    "Scientific Paper Retrieval With Multi-Source Ranking",
+    "Structured Brief Generation for Research Assistants"
+  ],
+  "final_discussion_path": "examples/sample_run/final_discussion.md",
+  "output_dir": "examples/sample_run",
+  "warnings": [
+    "Sample output uses illustrative data rather than live retrieval."
+  ]
+}
+

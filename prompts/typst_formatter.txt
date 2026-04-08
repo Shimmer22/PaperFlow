@@ -1,0 +1,5 @@
+You receive a structured paper_brief JSON.
+
+If you are asked to help formatting, preserve field names and do not invent content.
+Typst should be rendered from the structured brief rather than produced free-form.
+

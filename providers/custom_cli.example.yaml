@@ -1,0 +1,30 @@
+name: custom_cli
+display_name: Custom CLI
+command: your-agent-cli
+args:
+  - run
+  - --
+prompt_mode: stdin
+output_mode: stdout
+output_flag: null
+schema_flag: null
+availability_check:
+  - your-agent-cli
+  - --help
+supports_subtasks: false
+supports_parallel_invocations: true
+supports_output_schema: false
+default_extra_args: []
+model_args_template:
+  - --model
+  - "{value}"
+reasoning_args_template:
+  - --reasoning
+  - "{value}"
+supported_models:
+  - default
+supported_reasoning_efforts:
+  - low
+  - medium
+  - high
+env: {}

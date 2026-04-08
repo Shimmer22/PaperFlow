@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Research Flow 控制台</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <h1>Research Flow</h1>
+        <p class="sidebar-intro">本地研究工作流控制台</p>
+        <label for="outputRoot">输出目录根路径</label>
+        <input id="outputRoot" type="text" value="../outputs" />
+        <button id="refreshRuns">刷新运行记录</button>
+        <div class="run-form">
+          <h2>启动新运行</h2>
+          <label for="ideaInput">研究想法</label>
+          <textarea id="ideaInput" rows="7" placeholder="输入你的研究想法，系统将默认用中文总结与讨论。"></textarea>
+          <label for="providerSelect">Provider</label>
+          <select id="providerSelect"></select>
+          <label for="mainModelSelect">主模型</label>
+          <select id="mainModelSelect"></select>
+          <input id="mainModelInput" type="text" placeholder="或直接输入主模型名" />
+          <label for="mainReasoningSelect">主思考强度</label>
+          <select id="mainReasoningSelect"></select>
+          <label for="subModelSelect">Sub 模型</label>
+          <select id="subModelSelect"></select>
+          <input id="subModelInput" type="text" placeholder="或直接输入 Sub 模型名" />
+          <label for="subReasoningSelect">Sub 思考强度</label>
+          <select id="subReasoningSelect"></select>
+          <label for="candidateLimit">候选论文上限</label>
+          <input id="candidateLimit" type="number" min="1" max="20" value="5" />
+          <label for="maxPapers">最多入选论文数</label>
+          <input id="maxPapers" type="number" min="1" max="5" value="5" />
+          <label for="sourcesInput">论文源</label>
+          <input id="sourcesInput" type="text" value="openalex,semanticscholar,arxiv" />
+          <h3>澄清对话（GUI）</h3>
+          <button id="generateClarificationTurn" type="button">生成下一轮澄清问题</button>
+          <div id="clarificationQuestion" class="status-box">尚未生成澄清问题。</div>
+          <div id="clarificationOptions" class="runs-list"></div>
+          <label for="clarificationNote">补充说明（可选）</label>
+          <textarea id="clarificationNote" rows="3" placeholder="例如：优先关注实现路径，保持与无线通信场景相关。"></textarea>
+          <button id="appendClarificationAnswer" type="button">记录本轮选择</button>
+          <label for="outdirInput">运行输出目录</label>
+          <input id="outdirInput" type="text" placeholder="../outputs/ui_run_xxx" />
+          <label class="checkbox"><input id="downloadPdf" type="checkbox" checked /> 下载并解析 PDF</label>
+          <label class="checkbox"><input id="parallelRun" type="checkbox" checked /> 并行处理单篇论文</label>
+          <button id="startRun">开始运行</button>
+        </div>
+        <div class="run-form">
+          <h2>当前任务状态</h2>
+          <div id="currentRunStatus" class="status-box">暂无运行中的任务。</div>
+        </div>
+        <div class="run-form">
+          <h2>运行日志</h2>
+          <button id="openRunLog">打开当前 run.log</button>
+        </div>
+        <h2>历史运行</h2>
+        <div id="runsList" class="runs-list"></div>
+      </aside>
+      <main class="content">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>运行摘要</h2>
+            <div class="actions-row">
+              <button id="openRunLogInline">打开日志</button>
+              <button id="openRunDir">打开运行目录</button>
+            </div>
+          </div>
+          <div id="runSummary" class="summary-box"></div>
+        </section>
+        <section class="grid">
+          <div class="panel">
+            <h2>候选论文排序</h2>
+            <div id="candidates"></div>
+          </div>
+          <div class="panel">
+            <h2>最终入选论文</h2>
+            <div id="selected"></div>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>单篇论文简报</h2>
+          <div id="briefs"></div>
+        </section>
+        <section class="panel">
+          <h2>最终综合讨论</h2>
+          <pre id="finalDiscussion"></pre>
+        </section>
+      </main>
+    </div>
+    <script src="./renderer.js"></script>
+  </body>
+  </html>

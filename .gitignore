@@ -1,0 +1,31 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Virtual env
+.venv/
+venv/
+
+# Runtime/cache artifacts
+.cache/
+.codex_runtime/
+outputs/
+*.log
+
+# Node / Electron
+ui/node_modules/
+ui/dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+

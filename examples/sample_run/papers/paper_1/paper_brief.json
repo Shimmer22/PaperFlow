@@ -1,0 +1,28 @@
+{
+  "bibliographic_info": {
+    "title": "Agentic Literature Review Systems",
+    "authors": ["A. Researcher"],
+    "year": 2025,
+    "venue": "arXiv",
+    "url": "https://arxiv.org/abs/2501.00001",
+    "pdf_url": "https://arxiv.org/pdf/2501.00001.pdf",
+    "doi": null,
+    "arxiv_id": "2501.00001",
+    "sources": ["arxiv"]
+  },
+  "one_sentence_summary": "This paper proposes an agentic pipeline for literature review automation.",
+  "research_problem": "How to automate paper retrieval, reading, and review generation.",
+  "core_method": "Agent workflow with retrieval, filtering, and brief generation.",
+  "key_innovations": ["Combines retrieval and structured review artifacts."],
+  "experiment_summary": "Illustrative sample only.",
+  "main_results": ["Shows the target brief schema."],
+  "strengths": ["Auditable output."],
+  "limitations": ["Not a real paper summary."],
+  "assumptions": ["Sample data."],
+  "relation_to_user_idea": "Directly aligned with the workflow goal.",
+  "reusable_parts": ["brief schema", "pipeline decomposition"],
+  "open_questions": ["How much of the full paper should be read automatically?"],
+  "confidence_notes": ["Illustrative sample only."],
+  "reading_depth": "abstract-only"
+}
+

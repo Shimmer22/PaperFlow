@@ -1,0 +1,48 @@
+app:
+  default_output_root: outputs
+  prompts_dir: prompts
+  templates_dir: templates
+  cache_dir: .cache/research-flow
+
+provider:
+  name: glm_api
+  config_path: providers/glm_api.example.yaml
+  allow_fallback_without_provider: false
+
+retrieval:
+  enabled_sources:
+    - openalex
+    - semanticscholar
+    - arxiv
+  per_source_limit: 8
+  request_timeout_seconds: 20
+  user_agent: research-flow/0.1
+
+ranking:
+  candidate_limit: 5
+  max_selected_papers: 5
+  weights:
+    idea_relevance: 0.30
+    method_relevance: 0.20
+    importance: 0.20
+    novelty_or_recency: 0.10
+    diversity_value: 0.10
+    evidence_quality: 0.10
+
+pdf:
+  download_pdf: true
+  allow_abstract_only_fallback: true
+  max_chars_from_pdf: 22000
+
+execution:
+  parallelism: 3
+  provider_timeout_seconds: 180
+  planning_timeout_seconds: 90
+  continue_on_error: true
+
+typst:
+  template_path: templates/paper_brief.typ.j2
+  compile_pdf: true
+
+ui:
+  default_output_root: outputs

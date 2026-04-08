@@ -1,0 +1,39 @@
+[
+  {
+    "paper": {
+      "paper_id": "paper_1",
+      "title": "Agentic Literature Review Systems",
+      "authors": ["A. Researcher"],
+      "year": 2025,
+      "abstract": "A system for automating literature review workflows.",
+      "venue": "arXiv",
+      "source": "arxiv",
+      "source_id": "2501.00001",
+      "doi": null,
+      "arxiv_id": "2501.00001",
+      "url": "https://arxiv.org/abs/2501.00001",
+      "pdf_url": "https://arxiv.org/pdf/2501.00001.pdf",
+      "citation_count": 10,
+      "influential_citation_count": 1,
+      "fields_of_study": ["Computer Science"],
+      "retrieved_by_query": ["local research workflow paper brief"],
+      "raw_score": 0.0,
+      "metadata_completeness": 0.9,
+      "provenance": []
+    },
+    "score_breakdown": {
+      "idea_relevance": 0.9,
+      "method_relevance": 0.6,
+      "importance": 0.2,
+      "novelty_or_recency": 0.9,
+      "diversity_value": 0.9,
+      "evidence_quality": 0.8,
+      "total": 0.71
+    },
+    "selected": true,
+    "selection_reason": "Illustrative sample selection.",
+    "rejection_reason": null,
+    "similar_to": []
+  }
+]
+

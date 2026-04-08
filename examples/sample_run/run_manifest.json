@@ -1,0 +1,20 @@
+{
+  "run_id": "run_20260402_120000",
+  "created_at": "2026-04-02T12:00:00",
+  "status": "completed_with_warnings",
+  "idea_path": "examples/idea_example.md",
+  "output_dir": "examples/sample_run",
+  "provider_name": "codex",
+  "enabled_sources": ["openalex", "semanticscholar", "arxiv"],
+  "selected_paper_ids": ["paper_1", "paper_2", "paper_3"],
+  "artifacts": {
+    "clarified_idea": "examples/sample_run/clarified_idea.json",
+    "query_plan": "examples/sample_run/query_plan.json",
+    "ranked_candidates": "examples/sample_run/ranked_candidates.json",
+    "selected_papers": "examples/sample_run/selected_papers.json",
+    "final_discussion": "examples/sample_run/final_discussion.md",
+    "validation_report": "examples/sample_run/validation_report.json"
+  },
+  "warnings": ["Sample output uses illustrative data rather than live retrieval."]
+}
+

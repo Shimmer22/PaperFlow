@@ -1,0 +1,7 @@
+Wrap the task in a CLI-safe instruction envelope.
+
+Rules for provider output:
+- Prefer a single JSON object matching the requested schema.
+- Do not include markdown fences.
+- If the task cannot be completed fully, still return valid JSON with confidence notes and explicit gaps.
+- Prefer Chinese for human-readable fields in the JSON output.

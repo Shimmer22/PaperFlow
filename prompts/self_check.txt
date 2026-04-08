@@ -1,0 +1,14 @@
+You receive a run directory summary.
+
+Check that the workflow produced:
+- clarified_idea.json
+- query_plan.json
+- raw and merged candidate lists
+- ranked candidates
+- selected_papers.json with at most five papers
+- one brief json and one typst file per selected paper
+- final discussion
+- validation report
+
+Return missing or suspicious artifacts explicitly.
+

@@ -1,0 +1,39 @@
+name: codex
+display_name: Codex CLI
+command: codex
+args:
+  - exec
+  - "-"
+  - --skip-git-repo-check
+  - --ephemeral
+  - --sandbox
+  - workspace-write
+  - --json
+prompt_mode: stdin
+output_mode: file
+output_flag: --output-last-message
+schema_flag: --output-schema
+availability_check:
+  - codex
+  - --version
+supports_subtasks: false
+supports_parallel_invocations: true
+supports_output_schema: true
+default_extra_args: []
+model_args_template:
+  - --model
+  - "{value}"
+reasoning_args_template:
+  - -c
+  - model_reasoning_effort="{value}"
+supported_models:
+  - gpt-5.4
+  - gpt-5.4-mini
+  - gpt-5.2
+  - gpt-5.1-codex-max
+supported_reasoning_efforts:
+  - low
+  - medium
+  - high
+  - xhigh
+env: {}

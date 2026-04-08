@@ -1,0 +1,13 @@
+{
+  "raw_idea": "Build a local research idea to paper workflow.",
+  "core_problem": "Build a local research idea to paper workflow.",
+  "application_scenarios": ["research ideation support", "paper triage"],
+  "related_tasks": ["agent systems", "literature review automation"],
+  "keywords": ["local", "research", "workflow", "paper", "brief"],
+  "benchmark_methods": ["retrieval augmented generation", "citation-based ranking"],
+  "excluded_directions": ["chat-only output"],
+  "time_preference": "recent + foundational",
+  "preferred_research_type": "systems + applied research",
+  "clarification_notes": ["Illustrative sample."]
+}
+

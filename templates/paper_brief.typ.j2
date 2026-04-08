@@ -1,0 +1,85 @@
+#set page(width: 210mm, height: 297mm, margin: 18mm)
+#set text(font: "Libertinus Serif", size: 10pt)
+#set par(justify: true, leading: 0.75em)
+
+#let section(title, body) = [
+  #block(inset: (top: 8pt, bottom: 4pt))[
+    #text(weight: "bold", size: 12pt)[#title]
+  ]
+  #body
+]
+
+= {{ brief.bibliographic_info.title }}
+
+{% if brief.bibliographic_info.authors %}
+_{{ brief.bibliographic_info.authors | join(", ") }}_
+{% endif %}
+
+{{ brief.bibliographic_info.venue or "Unknown venue" }}{% if brief.bibliographic_info.year %} · {{ brief.bibliographic_info.year }}{% endif %}
+
+{% if brief.bibliographic_info.url %}
+链接: {{ brief.bibliographic_info.url }}
+{% endif %}
+
+{% if brief.bibliographic_info.pdf_url %}
+PDF: {{ brief.bibliographic_info.pdf_url }}
+{% endif %}
+
+#section("一句话总结", [{{ brief.one_sentence_summary }}])
+
+#section("研究问题", [{{ brief.research_problem }}])
+
+#section("核心方法", [{{ brief.core_method }}])
+
+#section("关键创新", [
+{% for item in brief.key_innovations %}
+- {{ item }}
+{% endfor %}
+])
+
+#section("实验摘要", [{{ brief.experiment_summary }}])
+
+#section("主要结果", [
+{% for item in brief.main_results %}
+- {{ item }}
+{% endfor %}
+])
+
+#section("优点", [
+{% for item in brief.strengths %}
+- {{ item }}
+{% endfor %}
+])
+
+#section("局限", [
+{% for item in brief.limitations %}
+- {{ item }}
+{% endfor %}
+])
+
+#section("前提假设", [
+{% for item in brief.assumptions %}
+- {{ item }}
+{% endfor %}
+])
+
+#section("与用户想法的关系", [{{ brief.relation_to_user_idea }}])
+
+#section("可复用部分", [
+{% for item in brief.reusable_parts %}
+- {{ item }}
+{% endfor %}
+])
+
+#section("开放问题", [
+{% for item in brief.open_questions %}
+- {{ item }}
+{% endfor %}
+])
+
+#section("置信说明", [
+阅读深度: {{ brief.reading_depth }}
+{% for item in brief.confidence_notes %}
+- {{ item }}
+{% endfor %}
+])

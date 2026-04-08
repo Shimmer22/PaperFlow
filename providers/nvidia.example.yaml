@@ -1,0 +1,47 @@
+provider_type: openai_compatible_api
+name: nvidia
+display_name: NVIDIA
+command: ""
+args: []
+prompt_mode: stdin
+output_mode: stdout
+output_flag: null
+schema_flag: null
+availability_check: []
+supports_subtasks: false
+supports_parallel_invocations: true
+supports_output_schema: false
+default_extra_args: []
+model_args_template: []
+reasoning_args_template: []
+supported_models:
+  - z-ai/glm4.7
+  - minimaxai/minimax-m2.5
+  - moonshotai/kimi-k2-thinking
+  - moonshotai/kimi-k2-instruct-0905
+  - deepseek-ai/deepseek-v3.2
+  - mistralai/devstral-2-123b-instruct-2512
+  - nvidia/llama-3.3-nemotron-super-49b-v1.5
+  - openai/gpt-oss-120b
+  - openai/gpt-oss-20b
+supported_reasoning_efforts:
+  - low
+  - medium
+  - high
+env: {}
+base_url: https://integrate.api.nvidia.com/v1
+base_url_env_var: NVIDIA_BASE_URL
+api_path: chat/completions
+api_style: chat_completions
+api_key_env_var: NV_API_KEY
+dotenv_path: .env
+headers: {}
+default_body:
+  stream: false
+model_field: model
+reasoning_effort_field: null
+temperature_field: temperature
+temperature: 0.2
+json_mode: json_object
+thinking_type: enabled
+clear_thinking: false

@@ -1,0 +1,15 @@
+You receive a clarified idea and a deduplicated paper candidate list.
+
+Return structured reranking guidance with explicit per-paper scores for:
+- idea_relevance
+- method_relevance
+- importance
+- novelty_or_recency
+- diversity_value
+- evidence_quality
+
+Rules:
+- Explain why a paper is selected or rejected.
+- Avoid selecting five near-duplicate papers.
+- Keep one alternative route or counterexample when credible.
+

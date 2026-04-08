@@ -1,0 +1,8 @@
+{
+  "run_dir": "examples/sample_run",
+  "success": true,
+  "checks": [
+    {"name": "sample", "success": true, "detail": "Illustrative sample only."}
+  ]
+}
+

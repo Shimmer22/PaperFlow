@@ -1,0 +1,19 @@
+{
+  "broad_queries": [
+    {
+      "label": "broad-core",
+      "intent": "broad coverage",
+      "query_text": "local research workflow paper brief",
+      "target_sources": ["openalex", "semanticscholar", "arxiv"],
+      "rationale": "Capture broad surface area."
+    }
+  ],
+  "precise_queries": [],
+  "method_centric_queries": [],
+  "application_centric_queries": [],
+  "semantic_queries": ["local research workflow paper brief"],
+  "synonym_expansions": ["literature review automation"],
+  "alternative_method_terms": ["citation graph expansion"],
+  "citation_expansion_strategy": "Prefer papers surfaced by multiple query families."
+}
+

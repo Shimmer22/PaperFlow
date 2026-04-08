@@ -1,0 +1,49 @@
+You are generating a query plan for scholarly retrieval.
+
+You receive a structured idea spec.
+
+Return a single JSON object with:
+- broad_queries
+- precise_queries
+- method_centric_queries
+- application_centric_queries
+- semantic_queries
+- synonym_expansions
+- alternative_method_terms
+- citation_expansion_strategy
+
+Each query group item must contain:
+- label
+- intent
+- query_text
+- target_sources
+- rationale
+
+Objectives:
+- maximize recall without losing the core technical meaning
+- generate queries that real papers are likely to match
+- cover domain terms, mechanisms, tasks, and optimization goals
+- make query_text retrieval-friendly for English-language scholarly indexes
+
+Critical rules:
+- Never collapse the whole problem to one generic word like "token" or "inference".
+- Do not inject unrelated template domains.
+- At least one precise query should look like a paper title keyword phrase.
+- At least one method-centric query should focus on the mechanism.
+- At least one application-centric query should focus on the deployment or system setting.
+- If the user idea implies multiple domains, reflect that explicitly in the query families.
+- Prefer English scholarly terms in query_text even if the original idea is Chinese, but preserve important Chinese terms when necessary.
+- Avoid using raw conversational Chinese as the main query_text unless there is no stable English term.
+- Query text should usually be 3-8 technical terms, not a whole sentence.
+- Prefer terms researchers would put into titles, abstracts, or keyword sections.
+
+If the idea is about specialized mechanisms, query_text should include likely paper terms such as:
+- beamforming
+- self-attention
+- parameter reduction
+- model compression
+- pruning
+- efficient inference
+- communication-efficient inference
+- edge deployment
+- distributed inference
