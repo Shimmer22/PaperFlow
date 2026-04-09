@@ -100,6 +100,31 @@ class ApiOnlyAndThinkingTests(unittest.TestCase):
         self.assertIn("模型不可用", message)
         self.assertIn("minimaxai/minimax-m2.5", message)
 
+    def test_nvidia_payload_omits_unsupported_thinking_controls(self) -> None:
+        config = ProviderConfig.model_validate(
+            {
+                "provider_type": "openai_compatible_api",
+                "name": "nvidia",
+                "supported_models": ["z-ai/glm4.7"],
+                "base_url": "https://integrate.api.nvidia.com/v1/chat/completions",
+                "api_key_env_var": "NV_API_KEY",
+                "default_body": {"stream": False},
+                "json_mode": "json_object",
+                "thinking_type": "enabled",
+                "clear_thinking": False,
+                "supports_thinking_controls": False,
+                "supports_clear_thinking": False,
+            }
+        )
+        provider = OpenAICompatibleAPIProvider(config, workdir=Path.cwd())
+        payload = provider._build_payload(
+            prompt="hello",
+            expected_output_schema=None,
+            runtime_options={"thinking_enabled": "false"},
+        )
+        self.assertNotIn("thinking", payload)
+        self.assertNotIn("clear_thinking", payload)
+
 
 if __name__ == "__main__":
     unittest.main()

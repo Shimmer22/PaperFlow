@@ -77,6 +77,18 @@ def _compact_terms(terms: list[str], limit: int = 5) -> list[str]:
 def _build_precise_variants(idea: IdeaSpec) -> list[str]:
     keywords = [term for term in idea.keywords if len(term) > 1]
     variants = []
+    lowered_keywords = [term.lower() for term in keywords]
+    has_dit = any(term in keyword for keyword in lowered_keywords for term in ["diffusion transformer", "dit"])
+    has_moe = any(term in keyword for keyword in lowered_keywords for term in ["mixture of experts", "moe"])
+    if has_dit and has_moe:
+        variants.extend(
+            [
+                "DiT-MoE scaling diffusion transformers mixture of experts",
+                "EC-DIT adaptive expert-choice routing diffusion transformers",
+                "diffusion transformer mixture of experts expert-choice routing",
+                "moe diffusion transformer explicit routing guidance",
+            ]
+        )
     if any("beamforming" in term.lower() or "波束成形" in term for term in keywords):
         variants.append("beamforming self-attention model compression")
         variants.append("neural beamforming attention mechanism parameter reduction")
@@ -101,6 +113,41 @@ def _build_precise_variants(idea: IdeaSpec) -> list[str]:
     return list(dict.fromkeys(variants))
 
 
+def _merge_query_plan(primary: QueryPlan, fallback: QueryPlan) -> QueryPlan:
+    def merge_groups(current: list[QueryGroup], extra: list[QueryGroup]) -> list[QueryGroup]:
+        merged: list[QueryGroup] = []
+        seen: set[str] = set()
+        for group in current + extra:
+            key = " ".join(group.query_text.lower().split())
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(group)
+        return merged
+
+    def merge_terms(current: list[str], extra: list[str]) -> list[str]:
+        merged: list[str] = []
+        seen: set[str] = set()
+        for term in current + extra:
+            key = " ".join(term.lower().split())
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            merged.append(term)
+        return merged
+
+    return QueryPlan(
+        broad_queries=merge_groups(primary.broad_queries, fallback.broad_queries),
+        precise_queries=merge_groups(primary.precise_queries, fallback.precise_queries),
+        method_centric_queries=merge_groups(primary.method_centric_queries, fallback.method_centric_queries),
+        application_centric_queries=merge_groups(primary.application_centric_queries, fallback.application_centric_queries),
+        semantic_queries=merge_terms(primary.semantic_queries, fallback.semantic_queries),
+        synonym_expansions=merge_terms(primary.synonym_expansions, fallback.synonym_expansions),
+        alternative_method_terms=merge_terms(primary.alternative_method_terms, fallback.alternative_method_terms),
+        citation_expansion_strategy=primary.citation_expansion_strategy or fallback.citation_expansion_strategy,
+    )
+
+
 def build_query_plan(idea: IdeaSpec, enabled_sources: list[str]) -> QueryPlan:
     english_terms = _english_term_pool(idea)
     compact_keywords = _compact_terms(english_terms, limit=5)
@@ -108,6 +155,10 @@ def build_query_plan(idea: IdeaSpec, enabled_sources: list[str]) -> QueryPlan:
     related_line = _join_terms([term for term in idea.related_tasks if term.isascii()], 4) or _join_terms(idea.related_tasks, 4)
     method_line = _join_terms([term for term in idea.benchmark_methods if term.isascii()], 4) or _join_terms(idea.benchmark_methods, 4)
     precise_variants = _build_precise_variants(idea)
+    lowered_idea_terms = " ".join(idea.keywords + idea.related_tasks + idea.benchmark_methods).lower()
+    has_dit_moe_theme = all(token in lowered_idea_terms for token in ["dit", "moe"]) or (
+        "diffusion transformer" in lowered_idea_terms and "mixture of experts" in lowered_idea_terms
+    )
     broad_query = " ".join(_compact_terms(compact_keywords + ["parameter reduction", "wireless communication"], limit=5)).strip()
     if len(broad_query.split()) <= 1:
         broad_query = keyword_line if len(keyword_line.split()) > 1 else f"{keyword_line} {related_line}".strip()
@@ -185,6 +236,15 @@ def build_query_plan(idea: IdeaSpec, enabled_sources: list[str]) -> QueryPlan:
         semantic_queries=[
             keyword_line,
             f"{keyword_line} scholarly papers",
+            *(
+                [
+                    "EC-DIT diffusion transformer expert-choice routing",
+                    "DiT-MoE scaling diffusion transformers",
+                    "diffusion transformer mixture of experts routing",
+                ]
+                if has_dit_moe_theme
+                else []
+            ),
         ],
         synonym_expansions=[
             "neural beamforming",
@@ -195,6 +255,16 @@ def build_query_plan(idea: IdeaSpec, enabled_sources: list[str]) -> QueryPlan:
             "split computing for VLM",
             "communication-efficient multimodal inference",
             "token pruning for VLM serving",
+            *(
+                [
+                    "EC-DIT",
+                    "DiT-MoE",
+                    "expert-choice routing",
+                    "explicit routing guidance",
+                ]
+                if has_dit_moe_theme
+                else []
+            ),
         ],
         alternative_method_terms=[
             "hybrid beamforming",
@@ -205,6 +275,15 @@ def build_query_plan(idea: IdeaSpec, enabled_sources: list[str]) -> QueryPlan:
             "adaptive token reduction",
             "visual token sparsification",
             "bandwidth-aware offloading",
+            *(
+                [
+                    "adaptive expert-choice routing",
+                    "expert routing guidance",
+                    "sparse mixture-of-experts diffusion",
+                ]
+                if has_dit_moe_theme
+                else []
+            ),
         ],
         citation_expansion_strategy="Prefer papers surfaced by multiple query families, especially those linking the core mechanism terms, system setting, and optimization target in the idea.",
     )
@@ -241,5 +320,5 @@ def maybe_build_query_plan_with_provider(
         for group in plan.iter_queries():
             if not group.target_sources:
                 group.target_sources = enabled_sources
-        return plan, result.model_dump()
+        return _merge_query_plan(plan, local_plan), result.model_dump()
     return local_plan, result.model_dump()

@@ -261,6 +261,8 @@ class ProviderConfig(BaseModel):
     json_mode: Literal["off", "json_object"] = "json_object"
     thinking_type: Literal["enabled", "disabled"] = "enabled"
     clear_thinking: Optional[bool] = None
+    supports_thinking_controls: bool = True
+    supports_clear_thinking: bool = True
 
 
 class ClarificationOption(BaseModel):

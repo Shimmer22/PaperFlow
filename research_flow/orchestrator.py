@@ -67,6 +67,12 @@ def _pre_rank_candidates(papers: list[PaperRecord], idea: IdeaSpec) -> list[Pape
     )
 
 
+def _scout_candidate_pool(papers: list[PaperRecord], idea: IdeaSpec, max_candidates: int) -> list[PaperRecord]:
+    ranked = _pre_rank_candidates(papers, idea)
+    scout_pool_limit = min(max(max_candidates * 2, 12), 15)
+    return ranked[: min(len(ranked), scout_pool_limit)]
+
+
 def _provider_stage_label(provider_result: Optional[dict], provider_active: bool) -> str:
     if not provider_active:
         return "provider_unavailable_local_fallback"
@@ -226,11 +232,22 @@ class ResearchFlowOrchestrator:
             write_json(run_dir / "candidate_papers_raw.json", [paper.model_dump() for paper in raw_candidates])
 
             merged_candidates = merge_and_dedupe(raw_candidates)
-            merged_candidates = _pre_rank_candidates(merged_candidates, idea_spec)[:max_candidates]
-            write_json(run_dir / "candidate_papers_merged.json", [paper.model_dump() for paper in merged_candidates])
+            scout_candidates_pool = _scout_candidate_pool(merged_candidates, idea_spec, max_candidates=max_candidates)
+            logger.info(
+                "Prepared %s merged candidates; sending top %s into scout stage (ui candidate_limit=%s)",
+                len(merged_candidates),
+                len(scout_candidates_pool),
+                max_candidates,
+            )
+            write_json(run_dir / "candidate_papers_merged.json", [paper.model_dump() for paper in scout_candidates_pool])
 
+            logger.info(
+                "Starting scout stage for %s candidates with parallelism=%s",
+                len(scout_candidates_pool),
+                int(self.app_config.execution["parallelism"]),
+            )
             scout_reports, scout_provider_results = scout_candidates(
-                papers=merged_candidates,
+                papers=scout_candidates_pool,
                 idea_spec=idea_spec,
                 provider=active_provider,
                 prompt_library=self.prompt_library,
@@ -238,6 +255,7 @@ class ResearchFlowOrchestrator:
                 parallelism=int(self.app_config.execution["parallelism"]),
                 runtime_options=sub_runtime_options,
             )
+            logger.info("Scout stage completed with %s reports", len(scout_reports))
             write_json(run_dir / "scout_reports.json", [item.model_dump() for item in scout_reports])
             if scout_provider_results:
                 write_json(run_dir / "scout_provider_results.json", scout_provider_results)
@@ -256,14 +274,14 @@ class ResearchFlowOrchestrator:
                 write_json(run_dir / "shortlist_provider_result.json", shortlist_provider_result)
 
             ranked = build_ranked_from_scout(
-                papers=merged_candidates,
+                papers=scout_candidates_pool,
                 reports=scout_reports,
                 selected_ids=shortlist_decision.selected_paper_ids,
             )
             if not ranked:
                 ranked = rank_candidates(
                     idea=idea_spec,
-                    papers=merged_candidates,
+                    papers=scout_candidates_pool,
                     max_selected=max_selected,
                     weights=self.app_config.ranking["weights"],
                 )
@@ -296,7 +314,7 @@ class ResearchFlowOrchestrator:
 
             clarify_stage = _provider_stage_label(clarify_provider_result, bool(active_provider))
             query_plan_stage = _provider_stage_label(query_provider_result, bool(active_provider))
-            retrieval_stage = _retrieval_stage_label(warnings, len(merged_candidates))
+            retrieval_stage = _retrieval_stage_label(warnings, len(scout_candidates_pool))
             key_notes = _build_key_notes(
                 provider_active=bool(active_provider),
                 clarify_stage=clarify_stage,
@@ -309,7 +327,7 @@ class ResearchFlowOrchestrator:
                 run_id=run_id,
                 status="running",
                 idea_excerpt=safe_excerpt(idea_text),
-                candidate_count=len(merged_candidates),
+                candidate_count=len(scout_candidates_pool),
                 selected_count=len(selected),
                 selected_titles=[paper.title for paper in selected],
                 final_discussion_path=str(run_dir / "final_discussion.md"),

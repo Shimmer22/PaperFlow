@@ -119,9 +119,10 @@ class OpenAICompatibleAPIProvider(BaseCLIProvider):
             set_nested_value(payload, self.config.reasoning_effort_field, reasoning_effort)
         if self.config.temperature is not None and self.config.temperature_field:
             set_nested_value(payload, self.config.temperature_field, self.config.temperature)
-        thinking_type = self._thinking_type(runtime_options)
-        payload["thinking"] = {"type": thinking_type}
-        if self.config.clear_thinking is not None:
+        if self.config.supports_thinking_controls:
+            thinking_type = self._thinking_type(runtime_options)
+            payload["thinking"] = {"type": thinking_type}
+        if self.config.supports_clear_thinking and self.config.clear_thinking is not None:
             payload["clear_thinking"] = self.config.clear_thinking
 
         schema_notice = ""

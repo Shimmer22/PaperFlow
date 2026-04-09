@@ -45,3 +45,5 @@ temperature: 0.2
 json_mode: json_object
 thinking_type: enabled
 clear_thinking: false
+supports_thinking_controls: false
+supports_clear_thinking: false
