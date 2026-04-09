@@ -23,6 +23,7 @@ from research_flow.providers import BaseCLIProvider, create_provider
 from research_flow.prompts_loader import PromptLibrary
 from research_flow.query_planner import maybe_build_query_plan_with_provider
 from research_flow.ranking import rank_candidates
+from research_flow.relevance import anchor_match_breakdown, anchor_relevance_score
 from research_flow.rendering import compile_typst_if_available, render_brief_typst
 from research_flow.retrieval import retrieve_candidates
 from research_flow.scouting import build_ranked_from_scout, maybe_select_shortlist_with_provider, scout_candidates
@@ -32,26 +33,9 @@ from research_flow.validation import validate_run_dir
 
 
 def _pre_rank_candidates(papers: list[PaperRecord], idea: IdeaSpec) -> list[PaperRecord]:
-    idea_terms = {
-        term.lower()
-        for term in (idea.keywords + idea.related_tasks + idea.benchmark_methods)
-        if term and len(term) > 2
-    }
-
-    def lexical_relevance(paper: PaperRecord) -> tuple[int, int]:
-        text = f"{paper.title} {paper.abstract}".lower()
-        overlap = sum(1 for term in idea_terms if term in text)
-        anchor_hits = 0
-        if any("beamforming" in term or "波束成形" in term for term in idea_terms):
-            if any(token in text for token in ["beamforming", "beam", "antenna", "wireless"]):
-                anchor_hits += 1
-        if any("self-attention" in term or "自注意力" in term or "attention mechanism" in term for term in idea_terms):
-            if any(token in text for token in ["self-attention", "attention", "transformer"]):
-                anchor_hits += 1
-        if any("compression" in term or "reduction" in term or "pruning" in term or "减少模型权重" in term for term in idea_terms):
-            if any(token in text for token in ["compression", "pruning", "parameter", "lightweight", "low-rank"]):
-                anchor_hits += 1
-        return anchor_hits, overlap
+    def lexical_relevance(paper: PaperRecord) -> tuple[float, int, int, int]:
+        exact_hits, token_hits, benchmark_hits = anchor_match_breakdown(idea, paper)
+        return anchor_relevance_score(idea, paper), exact_hits, token_hits, benchmark_hits
 
     return sorted(
         papers,
@@ -71,6 +55,10 @@ def _scout_candidate_pool(papers: list[PaperRecord], idea: IdeaSpec, max_candida
     ranked = _pre_rank_candidates(papers, idea)
     scout_pool_limit = min(max(max_candidates * 2, 12), 15)
     return ranked[: min(len(ranked), scout_pool_limit)]
+
+
+def _display_ranked_candidates(ranked: list, max_candidates: int) -> list:
+    return ranked[:max(1, max_candidates)]
 
 
 def _provider_stage_label(provider_result: Optional[dict], provider_active: bool) -> str:
@@ -192,7 +180,35 @@ class ResearchFlowOrchestrator:
         write_json(run_dir / "run_manifest.json", manifest.model_dump(mode="json"))
 
         warnings: list[str] = []
+        progress_path = run_dir / "run_progress.json"
+
+        def write_progress(
+            *,
+            stage: str,
+            percent: int,
+            message: str,
+            detail: str = "",
+            scout_completed: int = 0,
+            scout_total: int = 0,
+            brief_completed: int = 0,
+            brief_total: int = 0,
+        ) -> None:
+            write_json(
+                progress_path,
+                {
+                    "stage": stage,
+                    "progress_percent": max(0, min(100, percent)),
+                    "message": message,
+                    "detail": detail,
+                    "scout_completed": scout_completed,
+                    "scout_total": scout_total,
+                    "brief_completed": brief_completed,
+                    "brief_total": brief_total,
+                },
+            )
+
         try:
+            write_progress(stage="starting", percent=3, message="正在初始化运行环境")
             idea_spec, clarify_provider_result = maybe_clarify_idea_with_provider(
                 raw_idea=idea_text,
                 clarification_history=clarification_history or [],
@@ -206,6 +222,7 @@ class ResearchFlowOrchestrator:
                 write_json(run_dir / "clarify_provider_result.json", clarify_provider_result)
             if clarification_history:
                 write_json(run_dir / "clarification_dialogue.json", clarification_history)
+            write_progress(stage="clarify", percent=12, message="研究想法澄清完成")
 
             query_plan, query_provider_result = maybe_build_query_plan_with_provider(
                 idea=idea_spec,
@@ -218,6 +235,7 @@ class ResearchFlowOrchestrator:
             write_json(run_dir / "query_plan.json", query_plan.model_dump())
             if query_provider_result is not None:
                 write_json(run_dir / "query_plan_provider_result.json", query_provider_result)
+            write_progress(stage="query_plan", percent=22, message="检索查询规划完成")
 
             raw_candidates, retrieval_warnings = retrieve_candidates(
                 query_plan=query_plan,
@@ -230,6 +248,7 @@ class ResearchFlowOrchestrator:
             )
             warnings.extend(retrieval_warnings)
             write_json(run_dir / "candidate_papers_raw.json", [paper.model_dump() for paper in raw_candidates])
+            write_progress(stage="retrieval", percent=42, message="多源检索完成，正在去重与预排序")
 
             merged_candidates = merge_and_dedupe(raw_candidates)
             scout_candidates_pool = _scout_candidate_pool(merged_candidates, idea_spec, max_candidates=max_candidates)
@@ -240,6 +259,14 @@ class ResearchFlowOrchestrator:
                 max_candidates,
             )
             write_json(run_dir / "candidate_papers_merged.json", [paper.model_dump() for paper in scout_candidates_pool])
+            write_progress(
+                stage="scout",
+                percent=50,
+                message="进入候选论文初筛",
+                detail=f"0 / {len(scout_candidates_pool)}",
+                scout_completed=0,
+                scout_total=len(scout_candidates_pool),
+            )
 
             logger.info(
                 "Starting scout stage for %s candidates with parallelism=%s",
@@ -254,11 +281,27 @@ class ResearchFlowOrchestrator:
                 timeout=timeout,
                 parallelism=int(self.app_config.execution["parallelism"]),
                 runtime_options=sub_runtime_options,
+                progress_callback=lambda completed, total, title: write_progress(
+                    stage="scout",
+                    percent=50 + int((completed / max(1, total)) * 20),
+                    message=f"正在初筛候选论文：{title}",
+                    detail=f"{completed} / {total}",
+                    scout_completed=completed,
+                    scout_total=total,
+                ),
             )
             logger.info("Scout stage completed with %s reports", len(scout_reports))
             write_json(run_dir / "scout_reports.json", [item.model_dump() for item in scout_reports])
             if scout_provider_results:
                 write_json(run_dir / "scout_provider_results.json", scout_provider_results)
+            write_progress(
+                stage="shortlist",
+                percent=72,
+                message="初筛完成，正在生成 shortlist",
+                detail=f"{len(scout_reports)} / {len(scout_candidates_pool)}",
+                scout_completed=len(scout_reports),
+                scout_total=len(scout_candidates_pool),
+            )
 
             shortlist_decision, shortlist_provider_result = maybe_select_shortlist_with_provider(
                 provider=active_provider,
@@ -285,10 +328,19 @@ class ResearchFlowOrchestrator:
                     max_selected=max_selected,
                     weights=self.app_config.ranking["weights"],
                 )
-            write_json(run_dir / "ranked_candidates.json", [item.model_dump() for item in ranked])
+            displayed_ranked = _display_ranked_candidates(ranked, max_candidates=max_candidates)
+            write_json(run_dir / "ranked_candidates.json", [item.model_dump() for item in displayed_ranked])
 
             selected = [item.paper for item in ranked if item.selected][:max_selected]
             write_json(run_dir / "selected_papers.json", [paper.model_dump() for paper in selected])
+            write_progress(
+                stage="briefing",
+                percent=80,
+                message="shortlist 已生成，正在深读论文",
+                detail=f"0 / {len(selected)}",
+                brief_completed=0,
+                brief_total=len(selected),
+            )
 
             briefs = self._deep_read_selected_papers(
                 papers=selected,
@@ -300,7 +352,16 @@ class ResearchFlowOrchestrator:
                 parallel=parallel,
                 runtime_options=sub_runtime_options,
                 logger=logger,
+                progress_callback=lambda completed, total, title: write_progress(
+                    stage="briefing",
+                    percent=80 + int((completed / max(1, total)) * 15),
+                    message=f"正在深读论文：{title}",
+                    detail=f"{completed} / {total}",
+                    brief_completed=completed,
+                    brief_total=total,
+                ),
             )
+            write_progress(stage="synthesis", percent=96, message="正在综合生成最终讨论")
             final_discussion = maybe_synthesize_with_provider(
                 provider=active_provider,
                 prompt_library=self.prompt_library,
@@ -327,7 +388,8 @@ class ResearchFlowOrchestrator:
                 run_id=run_id,
                 status="running",
                 idea_excerpt=safe_excerpt(idea_text),
-                candidate_count=len(scout_candidates_pool),
+                candidate_count=len(displayed_ranked),
+                scout_pool_count=len(scout_candidates_pool),
                 selected_count=len(selected),
                 selected_titles=[paper.title for paper in selected],
                 final_discussion_path=str(run_dir / "final_discussion.md"),
@@ -366,11 +428,13 @@ class ResearchFlowOrchestrator:
 
             summary.status = manifest.status
             write_json(run_dir / "run_summary.json", summary.model_dump())
+            write_progress(stage="completed", percent=100, message="运行完成")
         except Exception as exc:
             manifest.status = "failed"
             warnings.append(str(exc))
             manifest.warnings = warnings
             write_json(run_dir / "run_manifest.json", manifest.model_dump(mode="json"))
+            write_progress(stage="failed", percent=100, message=f"运行失败：{exc}")
             raise
         return run_dir
 
@@ -385,6 +449,7 @@ class ResearchFlowOrchestrator:
         parallel: bool,
         runtime_options: dict[str, str],
         logger,
+        progress_callback=None,
     ) -> list[PaperBrief]:
         papers_root = ensure_dir(run_dir / "papers")
         template_path = Path(self.app_config.typst["template_path"])
@@ -418,12 +483,23 @@ class ResearchFlowOrchestrator:
             return brief
 
         if not parallel or len(papers) <= 1:
-            return [worker(paper) for paper in papers]
+            briefs = []
+            total = len(papers)
+            for index, paper in enumerate(papers, start=1):
+                briefs.append(worker(paper))
+                if progress_callback:
+                    progress_callback(index, total, paper.title)
+            return briefs
         briefs: list[PaperBrief] = []
         with ThreadPoolExecutor(max_workers=parallelism) as executor:
             futures = {executor.submit(worker, paper): paper for paper in papers}
+            completed = 0
+            total = len(papers)
             for future in as_completed(futures):
                 briefs.append(future.result())
+                completed += 1
+                if progress_callback:
+                    progress_callback(completed, total, futures[future].title)
         return briefs
 
     @staticmethod

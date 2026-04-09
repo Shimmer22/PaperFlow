@@ -194,6 +194,7 @@ class RunSummary(BaseModel):
     status: str
     idea_excerpt: str
     candidate_count: int
+    scout_pool_count: int = 0
     selected_count: int
     selected_titles: list[str]
     final_discussion_path: Optional[str] = None

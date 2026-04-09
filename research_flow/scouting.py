@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Optional
+from typing import Callable, Optional
 
 from research_flow.models import IdeaSpec, PaperRecord, RankedPaper, ScoreBreakdown, ScoutReport, ScoutShortlistDecision
 from research_flow.providers.base import BaseCLIProvider
 from research_flow.prompts_loader import PromptLibrary
+from research_flow.relevance import anchor_relevance_score
 
 
 def _score_report(report: ScoutReport) -> float:
@@ -80,10 +81,7 @@ def build_ranked_from_scout(
 
 
 def _local_scout_report(idea: IdeaSpec, paper: PaperRecord) -> ScoutReport:
-    text = f"{paper.title} {paper.abstract}".lower()
-    keywords = [term.lower() for term in (idea.keywords + idea.related_tasks + idea.benchmark_methods)]
-    overlap = sum(1 for keyword in keywords if keyword and keyword in text)
-    relevance = min(1.0, overlap / max(3, len(keywords) * 0.4))
+    relevance = anchor_relevance_score(idea, paper)
     novelty = 0.5 if (paper.year or 2018) >= 2023 else 0.35
     feasibility = 0.6 if paper.abstract else 0.3
     confidence = min(1.0, paper.metadata_completeness + (0.1 if paper.abstract else 0.0))
@@ -183,6 +181,7 @@ def scout_candidates(
     timeout: int,
     parallelism: int,
     runtime_options: Optional[dict[str, str]] = None,
+    progress_callback: Optional[Callable[[int, int, str], None]] = None,
 ) -> tuple[list[ScoutReport], list[dict]]:
     reports: list[ScoutReport] = []
     provider_results: list[dict] = []
@@ -198,18 +197,29 @@ def scout_candidates(
         )
 
     if len(papers) <= 1:
+        completed = 0
+        total = len(papers)
         for paper in papers:
             report, result = worker(paper)
             reports.append(report)
             if result:
                 provider_results.append(result)
+            completed += 1
+            if progress_callback:
+                progress_callback(completed, total, paper.title)
         return reports, provider_results
 
     with ThreadPoolExecutor(max_workers=max(1, parallelism)) as executor:
         futures = {executor.submit(worker, paper): paper for paper in papers}
+        completed = 0
+        total = len(papers)
         for future in as_completed(futures):
+            paper = futures[future]
             report, result = future.result()
             reports.append(report)
             if result:
                 provider_results.append(result)
+            completed += 1
+            if progress_callback:
+                progress_callback(completed, total, paper.title)
     return reports, provider_results

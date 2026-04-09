@@ -25,6 +25,8 @@ const downloadPdfInput = document.getElementById('downloadPdf');
 const parallelRunInput = document.getElementById('parallelRun');
 const startRunBtn = document.getElementById('startRun');
 const currentRunStatus = document.getElementById('currentRunStatus');
+const currentRunProgressBar = document.getElementById('currentRunProgressBar');
+const currentRunProgressText = document.getElementById('currentRunProgressText');
 const runSummary = document.getElementById('runSummary');
 const candidates = document.getElementById('candidates');
 const selected = document.getElementById('selected');
@@ -39,6 +41,7 @@ let clarificationHistory = [];
 let currentClarificationTurn = null;
 let selectedClarificationOptionId = '';
 let clarificationIdea = '';
+const { buildProgressLines, progressPercentLabel, statusLabel } = window.RunProgressState;
 
 const hasMarkdownSupport = Boolean(window.marked && window.DOMPurify);
 if (hasMarkdownSupport) {
@@ -423,30 +426,17 @@ function appendClarificationAnswer() {
   clarificationQuestion.textContent = `已记录 ${clarificationHistory.length} 轮澄清。可继续生成下一轮，或直接运行。`;
 }
 
-function statusLabel(status) {
-  if (status === 'running') return '运行中';
-  if (status === 'completed') return '已完成';
-  if (status === 'completed_with_warnings') return '完成但有警告';
-  if (status === 'failed') return '失败';
-  return status || '未知';
-}
-
 function renderCurrentRunStatus(state) {
   if (!state) {
     currentRunStatus.textContent = '暂无运行中的任务。';
+    currentRunProgressBar.style.width = '0%';
+    currentRunProgressText.textContent = '0%';
     return;
   }
-  const lines = [
-    `状态：${statusLabel(state.status)}`,
-    state.providerName ? `Provider：${state.providerName}` : '',
-    state.mainModel ? `主模型：${state.mainModel}` : '',
-    state.mainReasoningEffort ? `主思考强度：${state.mainReasoningEffort}` : '',
-    state.subModel ? `Sub 模型：${state.subModel}` : '',
-    state.subReasoningEffort ? `Sub 思考强度：${state.subReasoningEffort}` : '',
-    state.outdir ? `输出目录：${state.outdir}` : '',
-    state.message ? `说明：${state.message}` : '',
-  ].filter(Boolean);
+  const lines = buildProgressLines(state);
   currentRunStatus.textContent = lines.join('\n');
+  currentRunProgressBar.style.width = progressPercentLabel(state);
+  currentRunProgressText.textContent = progressPercentLabel(state);
 }
 
 function renderRunSummary(summary, manifest) {
@@ -462,6 +452,7 @@ function renderRunSummary(summary, manifest) {
       <div class="summary-item"><span class="summary-label">Run ID</span><span class="summary-value">${escapeHtml(summary.run_id || '-')}</span></div>
       <div class="summary-item"><span class="summary-label">状态</span><span class="summary-value">${escapeHtml(statusLabel(summary.status))}</span></div>
       <div class="summary-item"><span class="summary-label">候选论文数</span><span class="summary-value">${escapeHtml(summary.candidate_count ?? '-')}</span></div>
+      <div class="summary-item"><span class="summary-label">初筛池大小</span><span class="summary-value">${escapeHtml(summary.scout_pool_count ?? '-')}</span></div>
       <div class="summary-item"><span class="summary-label">入选论文数</span><span class="summary-value">${escapeHtml(summary.selected_count ?? '-')}</span></div>
       <div class="summary-item"><span class="summary-label">Idea 澄清</span><span class="summary-value">${escapeHtml(stageLabel(summary.clarify_stage))}</span></div>
       <div class="summary-item"><span class="summary-label">Query 规划</span><span class="summary-value">${escapeHtml(stageLabel(summary.query_plan_stage))}</span></div>

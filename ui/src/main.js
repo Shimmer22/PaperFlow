@@ -11,6 +11,7 @@ const defaultOutputRoot = path.join(workspaceRoot, 'outputs');
 
 let currentRunProcess = null;
 let currentRunMeta = null;
+let currentRunProgressTimer = null;
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -114,6 +115,57 @@ function listProviderConfigs() {
 function sendToAllWindows(channel, payload) {
   for (const win of BrowserWindow.getAllWindows()) {
     win.webContents.send(channel, payload);
+  }
+}
+
+function readRunProgress(outdir) {
+  const progress = safeReadJson(path.join(outdir, 'run_progress.json')) || {};
+  const summary = safeReadJson(path.join(outdir, 'run_summary.json')) || {};
+  return { progress, summary };
+}
+
+function stageLabelForProgress(stage) {
+  if (stage === 'starting') return '启动准备';
+  if (stage === 'clarify') return '想法澄清';
+  if (stage === 'query_plan') return '查询规划';
+  if (stage === 'retrieval') return '论文检索';
+  if (stage === 'scout') return '初筛候选';
+  if (stage === 'shortlist') return '生成 shortlist';
+  if (stage === 'briefing') return '深读论文';
+  if (stage === 'synthesis') return '综合讨论';
+  if (stage === 'completed') return '完成';
+  if (stage === 'failed') return '失败';
+  return '运行中';
+}
+
+function publishRunProgress() {
+  if (!currentRunMeta?.outdir) {
+    return;
+  }
+  const { progress, summary } = readRunProgress(currentRunMeta.outdir);
+  currentRunMeta = {
+    ...currentRunMeta,
+    progressPercent: progress.progress_percent || 0,
+    progressDetail: progress.detail || '',
+    stage: progress.stage || '',
+    stageLabel: stageLabelForProgress(progress.stage || ''),
+    message: progress.message || currentRunMeta.message,
+    candidateCount: summary.candidate_count || currentRunMeta.candidateCount || 0,
+    scoutPoolCount: summary.scout_pool_count || currentRunMeta.scoutPoolCount || 0,
+    selectedCount: summary.selected_count || currentRunMeta.selectedCount || 0,
+  };
+  sendToAllWindows('run-status', currentRunMeta);
+}
+
+function startRunProgressTimer() {
+  stopRunProgressTimer();
+  currentRunProgressTimer = setInterval(publishRunProgress, 1000);
+}
+
+function stopRunProgressTimer() {
+  if (currentRunProgressTimer) {
+    clearInterval(currentRunProgressTimer);
+    currentRunProgressTimer = null;
   }
 }
 
@@ -338,6 +390,9 @@ ipcMain.handle('start-run', async (_, options) => {
     subModel: runOptions.subModel || '',
     subReasoningEffort: runOptions.subReasoningEffort || '',
     message: 'CLI 已启动，正在执行研究工作流。',
+    stageLabel: '启动准备',
+    progressPercent: 1,
+    progressDetail: '',
     command: [built.command, ...built.args],
   };
   currentRunProcess = spawn(built.command, built.args, {
@@ -353,17 +408,25 @@ ipcMain.handle('start-run', async (_, options) => {
     sendToAllWindows('run-log', { stream: 'stderr', text: chunk.toString() });
   });
   currentRunProcess.on('close', (code) => {
+    stopRunProgressTimer();
     const runSummary = safeReadJson(path.join(runOptions.outdir, 'run_summary.json'));
     currentRunMeta = {
       ...currentRunMeta,
       status: runSummary?.status || (code === 0 ? 'completed' : 'failed'),
       exitCode: code,
+      progressPercent: 100,
+      candidateCount: runSummary?.candidate_count || 0,
+      scoutPoolCount: runSummary?.scout_pool_count || 0,
+      selectedCount: runSummary?.selected_count || 0,
+      stageLabel: code === 0 ? '完成' : '失败',
       message: code === 0 ? buildCompletionMessage(runOptions.outdir) : '运行失败，请打开 run.log 查看错误。',
     };
     sendToAllWindows('run-status', currentRunMeta);
     currentRunProcess = null;
   });
 
+  startRunProgressTimer();
+  publishRunProgress();
   sendToAllWindows('run-status', currentRunMeta);
   return { ok: true, run: currentRunMeta };
 });
