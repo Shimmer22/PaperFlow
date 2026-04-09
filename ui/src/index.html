@@ -8,91 +8,154 @@
   </head>
   <body>
     <div class="app-shell">
+      <!-- Sidebar -->
       <aside class="sidebar">
-        <h1>PaperFlow</h1>
-        <p class="sidebar-intro">本地研究工作流控制台</p>
-        <label for="outputRoot">输出目录根路径</label>
-        <input id="outputRoot" type="text" value="../outputs" />
-        <button id="refreshRuns">刷新运行记录</button>
-        <div class="run-form">
-          <h2>启动新运行</h2>
-          <label for="ideaInput">研究想法</label>
-          <textarea id="ideaInput" rows="7" placeholder="输入你的研究想法，系统将默认用中文总结与讨论。"></textarea>
-          <label for="providerSelect">Provider</label>
-          <select id="providerSelect"></select>
-          <label for="mainModelSelect">主模型</label>
-          <select id="mainModelSelect"></select>
-          <input id="mainModelInput" type="text" placeholder="或直接输入主模型名" />
-          <label for="mainReasoningSelect">主思考强度</label>
-          <select id="mainReasoningSelect"></select>
-          <label for="subModelSelect">Sub 模型</label>
-          <select id="subModelSelect"></select>
-          <input id="subModelInput" type="text" placeholder="或直接输入 Sub 模型名" />
-          <label for="subReasoningSelect">Sub 思考强度</label>
-          <select id="subReasoningSelect"></select>
-          <label for="candidateLimit">候选论文上限</label>
-          <input id="candidateLimit" type="number" min="1" max="20" value="5" />
-          <label for="maxPapers">最多入选论文数</label>
-          <input id="maxPapers" type="number" min="1" max="5" value="5" />
-          <label for="sourcesInput">论文源</label>
-          <input id="sourcesInput" type="text" value="openalex,semanticscholar,arxiv" />
-          <h3>细节确认</h3>
-          <button id="generateClarificationTurn" type="button">生成下一轮澄清问题</button>
-          <div id="clarificationQuestion" class="status-box">尚未生成澄清问题。</div>
-          <div id="clarificationOptions" class="runs-list"></div>
-          <label for="clarificationNote">补充说明（可选）</label>
-          <textarea id="clarificationNote" rows="3" placeholder="例如：优先关注实现路径，保持与无线通信场景相关。"></textarea>
-          <button id="appendClarificationAnswer" type="button">记录本轮选择</button>
-          <label for="outdirInput">运行输出目录</label>
-          <input id="outdirInput" type="text" placeholder="../outputs/ui_run_xxx" />
-          <label class="checkbox"><input id="downloadPdf" type="checkbox" checked /> 下载并解析 PDF</label>
-          <label class="checkbox"><input id="parallelRun" type="checkbox" checked /> 并行处理单篇论文</label>
-          <button id="startRun">开始运行</button>
+        <div class="sidebar-header">
+          <h1>PaperFlow</h1>
+          <p class="sidebar-intro">本地研究工作流控制台</p>
         </div>
-        <div class="run-form">
-          <h2>当前任务状态</h2>
+
+        <div class="sidebar-section">
+          <label for="outputRoot" class="section-label">输出目录根路径</label>
+          <div class="input-group">
+            <input id="outputRoot" type="text" value="../outputs" />
+            <button id="refreshRuns" class="icon-btn" title="刷新运行记录">↻</button>
+          </div>
+        </div>
+
+        <div class="sidebar-section history-section">
+          <h2 class="section-title">历史运行</h2>
+          <div id="runsList" class="runs-list"></div>
+        </div>
+
+        <div class="sidebar-section status-section">
+          <h2 class="section-title">当前任务状态</h2>
           <div id="currentRunStatus" class="status-box">暂无运行中的任务。</div>
+          <button id="openRunLog" class="secondary-btn">查看运行日志 (run.log)</button>
         </div>
-        <div class="run-form">
-          <h2>运行日志</h2>
-          <button id="openRunLog">打开当前 run.log</button>
-        </div>
-        <h2>历史运行</h2>
-        <div id="runsList" class="runs-list"></div>
       </aside>
+
+      <!-- Main Content -->
       <main class="content">
-        <section class="panel">
-          <div class="panel-header">
-            <h2>运行摘要</h2>
-            <div class="actions-row">
-              <button id="openRunLogInline">打开日志</button>
-              <button id="openRunDir">打开运行目录</button>
+        <!-- New Run / Workspace Area -->
+        <section class="panel workspace-panel">
+          <div class="workspace-header">
+            <h2>💡 研究方案构思</h2>
+            <div class="workspace-actions">
+              <label class="checkbox inline-check"><input id="downloadPdf" type="checkbox" checked /> 下载并解析 PDF</label>
+              <label class="checkbox inline-check"><input id="parallelRun" type="checkbox" checked /> 并行处理</label>
+              <button id="startRun" class="primary-btn">🚀 开始运行</button>
             </div>
           </div>
-          <div id="runSummary" class="summary-box"></div>
-        </section>
-        <section class="grid">
-          <div class="panel">
-            <h2>候选论文排序</h2>
-            <div id="candidates"></div>
+
+          <div class="workspace-grid">
+            <!-- Left Config -->
+            <div class="workspace-config">
+              <label for="ideaInput" class="main-label">研究想法</label>
+              <textarea id="ideaInput" rows="5" class="idea-textarea" placeholder="输入你的研究想法，例如：探讨多模态大模型在自动驾驶中的应用。系统将默认用中文总结与讨论。"></textarea>
+              
+              <details class="advanced-settings">
+                <summary>⚙️ 高级配置 (模型、搜索、输出)</summary>
+                <div class="settings-grid">
+                  <div class="settings-col">
+                    <label>Provider</label>
+                    <select id="providerSelect"></select>
+                    <label>主模型</label>
+                    <div class="combo-input">
+                      <select id="mainModelSelect"></select>
+                      <input id="mainModelInput" type="text" placeholder="自定义主模型名" />
+                    </div>
+                    <label>主思考强度</label>
+                    <select id="mainReasoningSelect"></select>
+                    
+                    <label>Sub 模型</label>
+                    <div class="combo-input">
+                      <select id="subModelSelect"></select>
+                      <input id="subModelInput" type="text" placeholder="自定义 Sub 模型名" />
+                    </div>
+                    <label>Sub 思考强度</label>
+                    <select id="subReasoningSelect"></select>
+                  </div>
+                  <div class="settings-col">
+                    <label>论文源</label>
+                    <input id="sourcesInput" type="text" value="openalex,semanticscholar,arxiv" />
+                    
+                    <div class="number-inputs">
+                      <div>
+                        <label>候选论文上限</label>
+                        <input id="candidateLimit" type="number" min="1" max="20" value="5" />
+                      </div>
+                      <div>
+                        <label>最多入选论文</label>
+                        <input id="maxPapers" type="number" min="1" max="5" value="5" />
+                      </div>
+                    </div>
+                    
+                    <label>运行输出目录</label>
+                    <input id="outdirInput" type="text" placeholder="留空自动生成 (如 ../outputs/ui_run_xxx)" />
+                  </div>
+                </div>
+              </details>
+            </div>
+
+            <!-- Right Interactive Chat -->
+            <div class="workspace-chat">
+              <div class="chat-header">
+                <span class="chat-title">多轮对齐</span>
+                <button id="generateClarificationTurn" type="button" class="chat-action-btn">✨ 生成澄清问题</button>
+              </div>
+              <div class="chat-window">
+                <div class="chat-messages">
+                  <div id="clarificationQuestion" class="chat-bubble ai-bubble">尚未生成澄清问题。点击右上角按钮开始对齐需求。</div>
+                  <div id="clarificationOptions" class="chat-options-container"></div>
+                </div>
+                <div class="chat-input-area">
+                  <textarea id="clarificationNote" rows="2" placeholder="输入补充说明 (可选)..."></textarea>
+                  <button id="appendClarificationAnswer" type="button" class="chat-send-btn">发送</button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="panel">
-            <h2>最终入选论文</h2>
-            <div id="selected"></div>
-          </div>
         </section>
-        <section class="panel">
-          <h2>单篇论文简报</h2>
-          <div id="briefs"></div>
-        </section>
-        <section class="panel">
-          <h2>最终综合讨论</h2>
-          <div id="finalDiscussion" class="markdown-body"></div>
-        </section>
+
+        <!-- Results Area -->
+        <div class="results-area">
+          <section class="panel">
+            <div class="panel-header">
+              <h2>运行摘要</h2>
+              <div class="actions-row">
+                <button id="openRunLogInline" class="outline-btn">打开日志</button>
+                <button id="openRunDir" class="outline-btn">打开运行目录</button>
+              </div>
+            </div>
+            <div id="runSummary" class="summary-box placeholder-container" data-placeholder="等待运行开始..."></div>
+          </section>
+          
+          <section class="grid">
+            <div class="panel">
+              <h2>候选论文排序</h2>
+              <div id="candidates" class="placeholder-container" data-placeholder="搜索并排序候选论文中..."></div>
+            </div>
+            <div class="panel">
+              <h2>最终入选论文</h2>
+              <div id="selected" class="placeholder-container" data-placeholder="筛选最终入选论文中..."></div>
+            </div>
+          </section>
+          
+          <section class="panel">
+            <h2>单篇论文简报</h2>
+            <div id="briefs" class="placeholder-container" data-placeholder="阅读论文并生成简报中..."></div>
+          </section>
+          
+          <section class="panel">
+            <h2>最终综合讨论</h2>
+            <div id="finalDiscussion" class="markdown-body placeholder-container" data-placeholder="生成最终综合讨论中..."></div>
+          </section>
+        </div>
       </main>
     </div>
     <script src="../node_modules/marked/lib/marked.umd.js"></script>
     <script src="../node_modules/dompurify/dist/purify.min.js"></script>
     <script src="./renderer.js"></script>
   </body>
-  </html>
+</html>
