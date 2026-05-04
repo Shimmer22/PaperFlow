@@ -104,6 +104,8 @@ function listProviderConfigs() {
         displayName: config.display_name || config.name || name,
         filePath,
         supportedModels: config.supported_models || [],
+        defaultMainModel: config.default_main_model || '',
+        defaultSubModel: config.default_sub_model || '',
         supportedReasoningEfforts: config.supported_reasoning_efforts || [],
         apiKeyEnvVar: config.api_key_env_var || '',
         command: config.command || '',
@@ -149,6 +151,10 @@ function publishRunProgress() {
     progressDetail: progress.detail || '',
     stage: progress.stage || '',
     stageLabel: stageLabelForProgress(progress.stage || ''),
+    stageStartedAt: progress.stage_started_at || '',
+    stageEtaSeconds: progress.stage_eta_seconds || 0,
+    stagePercentMin: progress.stage_percent_min,
+    stagePercentMax: progress.stage_percent_max,
     message: progress.message || currentRunMeta.message,
     candidateCount: summary.candidate_count || currentRunMeta.candidateCount || 0,
     scoutPoolCount: summary.scout_pool_count || currentRunMeta.scoutPoolCount || 0,
@@ -369,7 +375,7 @@ ipcMain.handle('start-run', async (_, options) => {
   }
   const runOptions = {
     ...options,
-    providerName: options.providerName || 'nvidia',
+    providerName: options.providerName || 'deepseek',
     providerConfigPath: options.providerConfigPath,
     outdir: options.outdir || path.join(defaultOutputRoot, `ui_run_${Date.now()}`),
   };

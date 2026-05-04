@@ -5,8 +5,8 @@ app:
   cache_dir: .cache/research-flow
 
 provider:
-  name: glm_api
-  config_path: providers/glm_api.example.yaml
+  name: deepseek
+  config_path: providers/deepseek.example.yaml
   allow_fallback_without_provider: false
 
 retrieval:

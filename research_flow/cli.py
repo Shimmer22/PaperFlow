@@ -16,6 +16,8 @@ from research_flow.prompts_loader import PromptLibrary
 from research_flow.validation import validate_run_dir
 
 app = typer.Typer(help="Research Flow CLI")
+DEFAULT_PROVIDER_NAME = "deepseek"
+DEFAULT_PROVIDER_CONFIG = Path("providers/deepseek.example.yaml")
 
 
 def format_json_output(payload: dict) -> str:
@@ -33,8 +35,8 @@ def run(
     parallel: bool = typer.Option(True, help="Parallelize per-paper brief generation."),
     outdir: Optional[Path] = typer.Option(None, help="Output directory for this run."),
     config: Path = typer.Option(Path("config.example.yaml"), exists=True, help="App config YAML."),
-    provider: str = typer.Option("glm_api", help="Provider name label."),
-    provider_config: Path = typer.Option(Path("providers/glm_api.example.yaml"), exists=True, help="Provider config YAML."),
+    provider: str = typer.Option(DEFAULT_PROVIDER_NAME, help="Provider name label."),
+    provider_config: Path = typer.Option(DEFAULT_PROVIDER_CONFIG, exists=True, help="Provider config YAML."),
     clarification_history_file: Optional[Path] = typer.Option(None, exists=True, help="GUI clarification history JSON file."),
     main_model: Optional[str] = typer.Option(None, help="主 agent 模型名。"),
     main_reasoning_effort: Optional[str] = typer.Option(None, help="主 agent 思考强度。"),
@@ -72,11 +74,12 @@ def clarify_turn(
     idea: str = typer.Option(..., help="Raw user idea."),
     history_file: Optional[Path] = typer.Option(None, exists=True, help="Clarification history JSON path."),
     config: Path = typer.Option(Path("config.example.yaml"), exists=True, help="App config YAML."),
-    provider_config: Path = typer.Option(Path("providers/glm_api.example.yaml"), exists=True, help="Provider config YAML."),
+    provider_config: Path = typer.Option(DEFAULT_PROVIDER_CONFIG, exists=True, help="Provider config YAML."),
     main_model: Optional[str] = typer.Option(None, help="主模型名。"),
     main_reasoning_effort: Optional[str] = typer.Option(None, help="主模型思考强度。"),
 ) -> None:
     app_cfg = load_provider_config(provider_config)
+    default_main_model = app_cfg.default_main_model or (app_cfg.supported_models[0] if app_cfg.supported_models else "")
     provider = create_provider(app_cfg, workdir=Path.cwd())
     available, detail = provider.check_available()
     if not available:
@@ -93,7 +96,7 @@ def clarify_turn(
         prompt_library=prompt_lib,
         timeout=45,
         runtime_options={
-            "model": main_model or "",
+            "model": (main_model or "").strip() or default_main_model,
             "reasoning_effort": main_reasoning_effort or "",
             "thinking_enabled": "true",
         },
@@ -117,7 +120,7 @@ def validate(run_dir: Path = typer.Option(..., exists=True, file_okay=False, hel
 
 @app.command("provider-check")
 def provider_check(
-    provider_config: Path = typer.Option(Path("providers/glm_api.example.yaml"), exists=True, help="Provider config YAML."),
+    provider_config: Path = typer.Option(DEFAULT_PROVIDER_CONFIG, exists=True, help="Provider config YAML."),
 ) -> None:
     """Check whether a provider CLI is callable."""
     config = load_provider_config(provider_config)

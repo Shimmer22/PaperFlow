@@ -245,6 +245,8 @@ class ProviderConfig(BaseModel):
     model_args_template: list[str] = Field(default_factory=list)
     reasoning_args_template: list[str] = Field(default_factory=list)
     supported_models: list[str] = Field(default_factory=list)
+    default_main_model: Optional[str] = None
+    default_sub_model: Optional[str] = None
     supported_reasoning_efforts: list[str] = Field(default_factory=list)
     env: dict[str, str] = Field(default_factory=dict)
     base_url: Optional[str] = None

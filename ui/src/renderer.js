@@ -100,6 +100,9 @@ function conciseWarningMessage(warningText) {
     if (text.toLowerCase().includes('nvidia')) {
       return 'NVIDIA API 触发了限流，请稍后重试，或切换到其他 provider。';
     }
+    if (text.toLowerCase().includes('deepseek')) {
+      return 'DeepSeek API 触发了限流，请稍后重试，或降低并发频率。';
+    }
     if (text.toLowerCase().includes('glm')) {
       return 'GLM API 触发了限流，请稍后重试，或降低操作频率。';
     }
@@ -263,9 +266,13 @@ function syncProviderOptions() {
   fillSelect(subModelSelect, provider?.supportedModels || [], '默认 Sub 模型');
   fillSelect(subReasoningSelect, provider?.supportedReasoningEfforts || [], '默认 Sub 强度');
 
-  const defaultModel = 'minimaxai/minimax-m2.5';
-  if ((provider?.supportedModels || []).includes(defaultModel)) {
-    mainModelSelect.value = defaultModel;
+  const defaultMainModel = provider?.defaultMainModel || '';
+  const defaultSubModel = provider?.defaultSubModel || '';
+  if ((provider?.supportedModels || []).includes(defaultMainModel)) {
+    mainModelSelect.value = defaultMainModel;
+  }
+  if ((provider?.supportedModels || []).includes(defaultSubModel)) {
+    subModelSelect.value = defaultSubModel;
   }
 }
 
@@ -319,9 +326,9 @@ async function loadUiConfig() {
       : provider.displayName;
     providerSelect.appendChild(option);
   }
-  const nvidiaProvider = providerConfigs.find((item) => item.name === 'nvidia');
-  if (nvidiaProvider) {
-    providerSelect.value = nvidiaProvider.filePath;
+  const deepseekProvider = providerConfigs.find((item) => item.name === 'deepseek');
+  if (deepseekProvider) {
+    providerSelect.value = deepseekProvider.filePath;
   } else if (providerConfigs[0]) {
     providerSelect.value = providerConfigs[0].filePath;
   }
@@ -353,7 +360,7 @@ async function startRun() {
   const outdir = outdirInput.value.trim() || `${outputRootInput.value}/ui_run_${Date.now()}`;
   const result = await window.researchFlow.startRun({
     idea,
-    providerName: provider?.name || 'nvidia',
+    providerName: provider?.name || 'deepseek',
     providerConfigPath: providerSelect.value,
     mainModel,
     mainReasoningEffort,

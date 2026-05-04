@@ -109,12 +109,41 @@ def _build_key_notes(
     return notes
 
 
+def _retrieval_progress_message(action: str, source: str, query_text: str) -> str:
+    source_label = f"{source}"
+    if action == "cached":
+        return f"正在读取缓存结果：{source_label}"
+    if action == "retrieved":
+        return f"已收到论文源响应：{source_label}"
+    if action == "failed":
+        return f"论文源请求失败：{source_label}"
+    if action == "skipped_blocked":
+        return f"跳过暂时阻塞的论文源：{source_label}"
+    if action == "missing_retriever":
+        return f"论文源未配置：{source_label}"
+    return f"正在等待论文源响应：{source_label}"
+
+
 class ResearchFlowOrchestrator:
     def __init__(self, config_path: Union[str, Path], provider_config_path: Optional[Union[str, Path]] = None) -> None:
         self.app_config = load_app_config(config_path)
         provider_path = provider_config_path or self.app_config.provider["config_path"]
         self.provider_config = load_provider_config(provider_path)
         self.prompt_library = PromptLibrary(self.app_config.app["prompts_dir"])
+
+    def _default_main_model(self) -> str:
+        if self.provider_config.default_main_model:
+            return self.provider_config.default_main_model
+        if self.provider_config.supported_models:
+            return self.provider_config.supported_models[0]
+        return ""
+
+    def _default_sub_model(self) -> str:
+        if self.provider_config.default_sub_model:
+            return self.provider_config.default_sub_model
+        if self.provider_config.supported_models:
+            return self.provider_config.supported_models[0]
+        return ""
 
     def run(
         self,
@@ -154,12 +183,12 @@ class ResearchFlowOrchestrator:
         planning_timeout = int(self.app_config.execution.get("planning_timeout_seconds", min(timeout, 45)))
         planning_timeout = max(10, min(planning_timeout, timeout))
         main_runtime_options = {
-            "model": main_model or "",
+            "model": (main_model or "").strip() or self._default_main_model(),
             "reasoning_effort": main_reasoning_effort or "",
             "thinking_enabled": "true",
         }
         sub_runtime_options = {
-            "model": sub_model or "",
+            "model": (sub_model or "").strip() or self._default_sub_model(),
             "reasoning_effort": sub_reasoning_effort or "",
             "thinking_enabled": "false",
         }
@@ -181,6 +210,7 @@ class ResearchFlowOrchestrator:
 
         warnings: list[str] = []
         progress_path = run_dir / "run_progress.json"
+        progress_stage = {"name": "", "started_at": ""}
 
         def write_progress(
             *,
@@ -192,7 +222,14 @@ class ResearchFlowOrchestrator:
             scout_total: int = 0,
             brief_completed: int = 0,
             brief_total: int = 0,
+            stage_eta_seconds: int = 0,
+            stage_percent_min: Optional[int] = None,
+            stage_percent_max: Optional[int] = None,
         ) -> None:
+            now_iso = datetime.now().isoformat()
+            if progress_stage["name"] != stage:
+                progress_stage["name"] = stage
+                progress_stage["started_at"] = now_iso
             write_json(
                 progress_path,
                 {
@@ -204,11 +241,23 @@ class ResearchFlowOrchestrator:
                     "scout_total": scout_total,
                     "brief_completed": brief_completed,
                     "brief_total": brief_total,
+                    "stage_started_at": progress_stage["started_at"],
+                    "stage_eta_seconds": max(0, stage_eta_seconds),
+                    "stage_percent_min": percent if stage_percent_min is None else stage_percent_min,
+                    "stage_percent_max": percent if stage_percent_max is None else stage_percent_max,
                 },
             )
 
         try:
             write_progress(stage="starting", percent=3, message="正在初始化运行环境")
+            write_progress(
+                stage="clarify",
+                percent=3,
+                message="正在澄清研究想法",
+                stage_eta_seconds=planning_timeout,
+                stage_percent_min=3,
+                stage_percent_max=11,
+            )
             idea_spec, clarify_provider_result = maybe_clarify_idea_with_provider(
                 raw_idea=idea_text,
                 clarification_history=clarification_history or [],
@@ -224,6 +273,14 @@ class ResearchFlowOrchestrator:
                 write_json(run_dir / "clarification_dialogue.json", clarification_history)
             write_progress(stage="clarify", percent=12, message="研究想法澄清完成")
 
+            write_progress(
+                stage="query_plan",
+                percent=12,
+                message="正在规划检索查询",
+                stage_eta_seconds=planning_timeout,
+                stage_percent_min=12,
+                stage_percent_max=21,
+            )
             query_plan, query_provider_result = maybe_build_query_plan_with_provider(
                 idea=idea_spec,
                 enabled_sources=enabled_sources,
@@ -237,6 +294,20 @@ class ResearchFlowOrchestrator:
                 write_json(run_dir / "query_plan_provider_result.json", query_provider_result)
             write_progress(stage="query_plan", percent=22, message="检索查询规划完成")
 
+            retrieval_targets = sum(
+                1
+                for query in query_plan.iter_queries()
+                for source in query.target_sources
+                if source in enabled_sources
+            )
+            write_progress(
+                stage="retrieval",
+                percent=22,
+                message="正在从论文源检索候选",
+                detail=f"0 / {max(1, retrieval_targets)}",
+                stage_percent_min=22,
+                stage_percent_max=48,
+            )
             raw_candidates, retrieval_warnings = retrieve_candidates(
                 query_plan=query_plan,
                 enabled_sources=enabled_sources,
@@ -245,10 +316,18 @@ class ResearchFlowOrchestrator:
                 user_agent=self.app_config.retrieval["user_agent"],
                 cache_dir=self.app_config.app["cache_dir"],
                 logger=logger,
+                progress_callback=lambda completed, total, source, query_text, action: write_progress(
+                    stage="retrieval",
+                    percent=22 + int((completed / max(1, total)) * 26),
+                    message=_retrieval_progress_message(action, source, query_text),
+                    detail=f"{completed} / {total} · {source} · {query_text[:72]}",
+                    stage_percent_min=22,
+                    stage_percent_max=48,
+                ),
             )
             warnings.extend(retrieval_warnings)
             write_json(run_dir / "candidate_papers_raw.json", [paper.model_dump() for paper in raw_candidates])
-            write_progress(stage="retrieval", percent=42, message="多源检索完成，正在去重与预排序")
+            write_progress(stage="retrieval", percent=48, message="多源检索完成，正在去重与预排序")
 
             merged_candidates = merge_and_dedupe(raw_candidates)
             scout_candidates_pool = _scout_candidate_pool(merged_candidates, idea_spec, max_candidates=max_candidates)
@@ -301,6 +380,9 @@ class ResearchFlowOrchestrator:
                 detail=f"{len(scout_reports)} / {len(scout_candidates_pool)}",
                 scout_completed=len(scout_reports),
                 scout_total=len(scout_candidates_pool),
+                stage_eta_seconds=planning_timeout,
+                stage_percent_min=72,
+                stage_percent_max=79,
             )
 
             shortlist_decision, shortlist_provider_result = maybe_select_shortlist_with_provider(
@@ -361,7 +443,14 @@ class ResearchFlowOrchestrator:
                     brief_total=total,
                 ),
             )
-            write_progress(stage="synthesis", percent=96, message="正在综合生成最终讨论")
+            write_progress(
+                stage="synthesis",
+                percent=96,
+                message="正在综合生成最终讨论",
+                stage_eta_seconds=timeout,
+                stage_percent_min=96,
+                stage_percent_max=99,
+            )
             final_discussion = maybe_synthesize_with_provider(
                 provider=active_provider,
                 prompt_library=self.prompt_library,
